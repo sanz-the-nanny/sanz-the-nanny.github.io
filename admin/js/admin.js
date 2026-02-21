@@ -432,22 +432,18 @@ document.querySelectorAll('.booking-filter, .contract-filter, .invoice-filter').
 function toggleMobileNav() {
   const sidebar = document.getElementById('admin-sidebar');
   const backdrop = document.getElementById('sidebar-backdrop');
-  const hamburger = document.getElementById('hamburger-btn');
   const isOpen = sidebar.classList.contains('open');
   if (isOpen) {
     closeMobileNav();
   } else {
     sidebar.classList.add('open');
     backdrop.classList.add('visible');
-    hamburger.classList.add('open');
   }
 }
 
 function closeMobileNav() {
   const sidebar = document.getElementById('admin-sidebar');
   const backdrop = document.getElementById('sidebar-backdrop');
-  const hamburger = document.getElementById('hamburger-btn');
   if (sidebar) sidebar.classList.remove('open');
   if (backdrop) backdrop.classList.remove('visible');
-  if (hamburger) hamburger.classList.remove('open');
 }

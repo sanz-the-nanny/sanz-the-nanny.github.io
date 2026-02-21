@@ -380,6 +380,9 @@ a:hover { color: var(--salmon); }
 .sidebar-backdrop {
   display: none; /* hidden on desktop */
 }
+.sidebar-close-btn {
+  display: none; /* hidden on desktop */
+}
 
 /* ─── Responsive: Tablet ─── */
 @media (max-width: 1200px) {
@@ -420,23 +423,30 @@ a:hover { color: var(--salmon); }
     display: block; width: 22px; height: 2px; background: var(--text);
     border-radius: 2px; transition: all 0.3s ease;
   }
-  .hamburger-btn.open span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
-  .hamburger-btn.open span:nth-child(2) { opacity: 0; }
-  .hamburger-btn.open span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+
+  /* Close button inside sidebar */
+  .sidebar-close-btn {
+    position: absolute; top: 14px; right: 14px; z-index: 10;
+    width: 32px; height: 32px; background: rgba(255,255,255,0.08);
+    border: none; border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text); font-size: 1.2rem; transition: background 0.2s;
+  }
+  .sidebar-close-btn:hover { background: rgba(255,255,255,0.15); }
 
   /* Backdrop */
   .sidebar-backdrop {
-    display: none; position: fixed; inset: 0; z-index: 150;
+    display: none; position: fixed; inset: 0; z-index: 340;
     background: rgba(0,0,0,0.5); backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
   }
   .sidebar-backdrop.visible { display: block; }
 
-  /* Sidebar as slide-out drawer */
+  /* Sidebar as slide-out drawer — full-overlay */
   .app.visible { flex-direction: column; }
   .sidebar {
     position: fixed; top: 0; left: -280px; bottom: 0;
-    width: 260px; height: 100vh; z-index: 200;
+    width: 270px; height: 100vh; z-index: 350;
     flex-direction: column; transition: left 0.3s ease;
     border-right: 1px solid var(--border); overflow-y: auto; overflow-x: hidden;
   }
@@ -689,12 +699,13 @@ a:hover { color: var(--salmon); }
 
   <!-- Sidebar -->
   <aside class="sidebar" id="admin-sidebar">
-    <div class="sidebar-logo">
+    <div class="sidebar-logo" style="position:relative;">
       <img src="../logo.svg" alt="Sanz">
       <div class="logo-text">
         <span class="logo-title">Sanz the Nanny</span>
         <span>Admin Dashboard</span>
       </div>
+      <button class="sidebar-close-btn" onclick="closeMobileNav()" aria-label="Close menu">&times;</button>
     </div>
     <nav class="sidebar-nav">
       <button class="active" onclick="switchTab('dashboard');closeMobileNav()"><span>📊</span> Dashboard</button>
@@ -1325,7 +1336,7 @@ a:hover { color: var(--salmon); }
 <script src="../js/firebase-config.js?v=7"></script>
 
 <!-- Admin Modules -->
-<script src="js/admin.js?v=10"></script>
+<script src="js/admin.js?v=11"></script>
 <script src="js/bookings.js?v=10"></script>
 <script src="js/calendar-admin.js?v=8"></script>
 <script src="js/clients.js?v=10"></script>
