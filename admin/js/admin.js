@@ -50,12 +50,13 @@ function formatNumber(n) { return (n || 0).toLocaleString(); }
 function formatCurrency(n) { return '$' + (parseFloat(n) || 0).toFixed(2); }
 function formatDate(str) {
   if (!str) return '—';
-  const d = new Date(str);
+  // Append T00:00:00 for date-only strings to avoid UTC→local timezone shift
+  const d = new Date(str.length === 10 ? str + 'T00:00:00' : str);
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 function formatDateTime(str) {
   if (!str) return '—';
-  const d = new Date(str);
+  const d = new Date(str.length === 10 ? str + 'T00:00:00' : str);
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 function formatDuration(secs) {
