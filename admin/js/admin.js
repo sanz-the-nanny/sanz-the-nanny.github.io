@@ -96,6 +96,7 @@ function switchTab(tab) {
     case 'prospects': refreshProspects(); break;
     case 'contracts': refreshContracts(); break;
     case 'invoices': refreshInvoices(); break;
+    case 'payments': refreshPaymentLinks(); break;
     case 'analytics': refreshAnalytics(); break;
   }
 }

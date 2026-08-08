@@ -40,6 +40,9 @@ jobs:
           FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
           FIREBASE_MEASUREMENT_ID: ${{ secrets.FIREBASE_MEASUREMENT_ID }}
           PAYPAL_ME_USERNAME: ${{ secrets.PAYPAL_ME_USERNAME }}
+          PAYMENT_API_BASE: ${{ secrets.PAYMENT_API_BASE }}
+          PAYMENT_ADMIN_TOKEN: ${{ secrets.PAYMENT_ADMIN_TOKEN }}
+          PAYMENT_ALERT_EMAIL: ${{ secrets.PAYMENT_ALERT_EMAIL }}
         run: |
           CONFIG_FILE="js/firebase-config.js"
           INVOICE_FILE="admin/js/invoices.js"
@@ -56,6 +59,11 @@ jobs:
 
           # PayPal
           sed -i "s|__PAYPAL_ME_USERNAME__|${PAYPAL_ME_USERNAME}|g" "$INVOICE_FILE"
+
+          # Payment link generator (Stripe)
+          sed -i "s|__PAYMENT_API_BASE__|${PAYMENT_API_BASE}|g" "$CONFIG_FILE"
+          sed -i "s|__PAYMENT_ADMIN_TOKEN__|${PAYMENT_ADMIN_TOKEN}|g" "$CONFIG_FILE"
+          sed -i "s|__PAYMENT_ALERT_EMAIL__|${PAYMENT_ALERT_EMAIL}|g" "$CONFIG_FILE"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

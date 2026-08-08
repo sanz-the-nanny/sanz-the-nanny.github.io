@@ -745,6 +745,7 @@ a:hover { color: var(--salmon); }
       <button onclick="switchTab('prospects');closeMobileNav()"><span>🌱</span> Prospects</button>
       <button onclick="switchTab('contracts');closeMobileNav()"><span>📝</span> Contracts</button>
       <button onclick="switchTab('invoices');closeMobileNav()"><span>💰</span> Invoices</button>
+      <button onclick="switchTab('payments');closeMobileNav()"><span>💳</span> Payment Links</button>
       <button onclick="switchTab('analytics');closeMobileNav()"><span>📈</span> Analytics</button>
     </nav>
     <div class="sidebar-footer">
@@ -1276,6 +1277,58 @@ a:hover { color: var(--salmon); }
       </div>
     </div>
 
+    <!-- ═══════════════ PAYMENT LINKS ═══════════════ -->
+    <div id="panel-payments" class="panel">
+      <div class="panel-header">
+        <h2>Payment Links</h2>
+        <p>Create a pay-by-card link to text a client. The card fee is added on top so you receive the full amount.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3><span class="card-icon">💳</span> New Payment Link</h3>
+          <form id="paymentForm" onsubmit="return false;">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Amount you want to receive (USD)</label>
+                <input type="number" id="pay-amount" min="1" step="0.01" placeholder="0.00" oninput="updatePayPreview()" required>
+              </div>
+              <div class="form-group">
+                <label>What's it for?</label>
+                <input type="text" id="pay-description" maxlength="200" placeholder="e.g., Babysitting — Nov 1-3" required>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>Client Name (optional)</label><input type="text" id="pay-client-name" maxlength="120"></div>
+              <div class="form-group"><label>Client Mobile (optional)</label><input type="tel" id="pay-client-phone" maxlength="40" placeholder="+1 512 555 0100"></div>
+            </div>
+
+            <label style="display:flex;align-items:center;gap:8px;margin:0.5rem 0 1rem;font-size:0.9rem;color:var(--text-muted);cursor:pointer;">
+              <input type="checkbox" id="pay-add-fee" checked onchange="updatePayPreview()">
+              Add the ~2.9% + $0.30 card fee on top (client pays the fee)
+            </label>
+
+            <div class="invoice-totals">
+              <div class="total-line"><span>You receive</span><span id="pay-net">$0.00</span></div>
+              <div class="total-line"><span>Card fee</span><span id="pay-fee">$0.00</span></div>
+              <div class="total-line grand-total"><span>Client pays</span><span id="pay-total">$0.00</span></div>
+            </div>
+
+            <div class="btn-group" style="margin-top:1rem;">
+              <button type="button" class="btn btn-primary" id="pay-create-btn" onclick="createPaymentLink()">Generate Link</button>
+              <button type="button" class="btn btn-outline" onclick="resetPaymentForm()">Clear</button>
+            </div>
+            <div id="pay-result" style="display:none;margin-top:1.25rem;"></div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3><span class="card-icon">📄</span> Recent Links</h3>
+          <div id="payment-links-list" class="loading">Loading links...</div>
+        </div>
+      </div>
+    </div>
+
     <!-- ═══════════════ ANALYTICS ═══════════════ -->
     <div id="panel-analytics" class="panel">
       <div class="panel-header">
@@ -1387,6 +1440,7 @@ a:hover { color: var(--salmon); }
 <script src="js/prospects.js?v=10"></script>
 <script src="js/contracts.js?v=8"></script>
 <script src="js/invoices.js?v=7"></script>
+<script src="js/payments.js?v=1"></script>
 <script src="js/analytics-admin.js?v=9"></script>
 
 </body>

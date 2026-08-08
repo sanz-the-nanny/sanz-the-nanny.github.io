@@ -87,6 +87,32 @@
       ".write": "auth != null && auth.token.email === 'sanz.the.nanny@gmail.com'"
     },
 
+    // ─── Payment Links (Stripe pay-by-card) ───
+    // Admin reads the whole list. A visitor with the link ID can read only
+    // that single record (to show amount + Stripe URL) and push their own
+    // visit/presence tracking data. Visitors cannot alter link/amount fields.
+    "payment_links": {
+      ".read": "auth != null && auth.token.email === 'sanz.the.nanny@gmail.com'",
+      "$id": {
+        ".read": true,
+        // Only admin may create/replace/delete the link record itself.
+        ".write": "auth != null && auth.token.email === 'sanz.the.nanny@gmail.com'",
+        // Public visit logging (append-only).
+        "visits": {
+          "$visit": {
+            ".write": "!data.exists()",
+            ".validate": "newData.exists()"
+          }
+        },
+        // Public live-presence (self-managed heartbeat, keyed by visitorId).
+        "presence": {
+          "$visitor": {
+            ".write": true
+          }
+        }
+      }
+    },
+
     // ─── Calendar Events (admin schedule) ───
     // Admin only
     "calendar_events": {

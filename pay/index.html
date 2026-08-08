@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Secure Payment · Sanz the Nanny</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#12121e; --card:#1e1e30; --text:#f0e6ef; --muted:#a89aab;
+    --pink:#ff6b9d; --pink-dark:#c44569; --green:#4caf50; --border:rgba(255,255,255,0.08);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:'Poppins',sans-serif; background:radial-gradient(ellipse at 50% 20%, #2a1a3e 0%, #12121e 70%);
+    color:var(--text); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1.5rem;
+  }
+  .card {
+    background:var(--card); border:1px solid var(--border); border-radius:20px;
+    max-width:420px; width:100%; padding:2.25rem 2rem; text-align:center;
+    box-shadow:0 20px 60px rgba(0,0,0,0.5);
+  }
+  .logo { height:44px; margin-bottom:1rem; filter:brightness(0) invert(1); opacity:0.9; }
+  h1 { font-size:1.35rem; font-weight:600; margin-bottom:0.25rem; }
+  .brand { color:var(--pink); font-size:0.85rem; margin-bottom:1.75rem; }
+  .desc { color:var(--muted); font-size:0.95rem; margin-bottom:1.25rem; }
+  .amount {
+    font-size:2.6rem; font-weight:700; color:var(--pink);
+    margin:0.5rem 0 0.25rem; letter-spacing:-1px;
+  }
+  .fee-note { color:var(--muted); font-size:0.8rem; margin-bottom:1.75rem; }
+  .btn-pay {
+    display:inline-block; width:100%; padding:15px; border:none; border-radius:50px;
+    background:linear-gradient(135deg,var(--pink),var(--pink-dark)); color:#fff;
+    font-size:1.05rem; font-weight:600; font-family:inherit; cursor:pointer;
+    box-shadow:0 6px 24px rgba(255,107,157,0.35); transition:transform .2s, box-shadow .2s;
+    text-decoration:none;
+  }
+  .btn-pay:hover { transform:translateY(-2px); box-shadow:0 10px 32px rgba(255,107,157,0.45); }
+  .secure { color:var(--muted); font-size:0.75rem; margin-top:1.25rem; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .state { color:var(--muted); font-size:0.95rem; }
+  .err { color:#ef5350; }
+  .spinner {
+    width:34px; height:34px; border:3px solid var(--border); border-top-color:var(--pink);
+    border-radius:50%; margin:1rem auto; animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="spinner"></div>
+    <p class="state">Loading your secure payment…</p>
+  </div>
+
+  <!-- Firebase + EmailJS -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
+  <!-- Local env (gitignored, won't exist in prod) -->
+  <script src="../js/env.js" onerror=""></script>
+  <script src="../js/firebase-config.js?v=7"></script>
+
+  <script>
+  (function () {
+    'use strict';
+    var card = document.getElementById('card');
+
+    function show(html) { card.innerHTML = html; }
+    function fail(msg) {
+      show('<h1>Payment unavailable</h1><p class="state err" style="margin-top:1rem;">' + msg + '</p>');
+    }
+
+    var id = new URLSearchParams(location.search).get('id');
+    if (!id || !/^[-\w]+$/.test(id)) { fail('Invalid or missing payment link.'); return; }
+
+    if (!initFirebase()) { fail('Service temporarily unavailable. Please try again shortly.'); return; }
+
+    /* ── Visitor + session identity ── */
+    function uid() { return Math.random().toString(36).substring(2, 10) + Date.now().toString(36); }
+    var visitorId = localStorage.getItem('sanz_pay_vid') || uid();
+    localStorage.setItem('sanz_pay_vid', visitorId);
+    var arrivedAt = Date.now();
+
+    var linkRef = fbRef('/payment_links/' + id);
+
+    linkRef.once('value').then(function (snap) {
+      var link = snap.val();
+      if (!link) { fail('This payment link was not found or has been removed.'); return; }
+      if (link.status === 'paid') {
+        show('<h1>Already paid</h1><p class="state" style="margin-top:1rem;">This payment has already been completed. Thank you! 💗</p>');
+        return;
+      }
+
+      renderPay(link);
+      trackVisit(link);
+    }).catch(function () {
+      fail('Could not load payment details. Please try again.');
+    });
+
+    /* ── Render the payment card ── */
+    function renderPay(link) {
+      var total = (parseFloat(link.amount_total) || 0).toFixed(2);
+      var feeIncluded = (parseFloat(link.fee) || 0) > 0;
+      show(
+        '<img class="logo" src="../logo.svg" alt="Sanz the Nanny" onerror="this.style.display=\'none\'">' +
+        '<h1>Secure Payment</h1>' +
+        '<p class="brand">Sanz the Nanny</p>' +
+        '<p class="desc">' + escapeHtml(link.description || 'Payment') + '</p>' +
+        '<div class="amount">$' + total + '</div>' +
+        (feeIncluded ? '<p class="fee-note">Includes card processing fee</p>' : '<div style="height:1rem;"></div>') +
+        '<a class="btn-pay" id="btn-pay" href="' + encodeURI(link.stripe_url) + '">Pay by Card →</a>' +
+        '<p class="secure">🔒 Payments processed securely by Stripe</p>'
+      );
+      var btn = document.getElementById('btn-pay');
+      if (btn) btn.addEventListener('click', function () {
+        fbRef('/payment_links/' + id + '/visits').push({
+          type: 'clicked_pay', visitorId: visitorId, timestamp: Date.now()
+        }).catch(function () {});
+      });
+    }
+
+    /* ── Track the visit: IP, device, referrer, live presence ── */
+    function trackVisit(link) {
+      var ua = navigator.userAgent;
+      var device = /Mobi|Android/i.test(ua) ? 'mobile' : /Tablet|iPad/i.test(ua) ? 'tablet' : 'desktop';
+      var visit = {
+        type: 'arrived',
+        visitorId: visitorId,
+        timestamp: arrivedAt,
+        device: device,
+        referrer: document.referrer || 'Direct',
+        userAgent: ua,
+        ip: 'resolving…'
+      };
+
+      var visitRef = fbRef('/payment_links/' + id + '/visits').push(visit);
+
+      // Client-side IP lookup (free, no key).
+      fetch('https://ipapi.co/json/').then(function (r) { return r.json(); }).then(function (geo) {
+        visitRef.update({
+          ip: geo.ip || 'unknown',
+          city: geo.city || '',
+          region: geo.region || '',
+          country: geo.country_name || ''
+        }).catch(function () {});
+        notifyLive(link, geo);
+      }).catch(function () { notifyLive(link, {}); });
+
+      /* ── Live presence ── */
+      var presenceRef = fbRef('/payment_links/' + id + '/presence/' + visitorId);
+      presenceRef.set({ arrivedAt: arrivedAt, lastSeen: Date.now(), device: device });
+      presenceRef.onDisconnect().remove();
+
+      var heartbeat = setInterval(function () {
+        presenceRef.update({
+          lastSeen: Date.now(),
+          duration: Math.round((Date.now() - arrivedAt) / 1000)
+        }).catch(function () {});
+      }, 15000);
+
+      window.addEventListener('beforeunload', function () {
+        clearInterval(heartbeat);
+        var dur = Math.round((Date.now() - arrivedAt) / 1000);
+        visitRef.update({ duration: dur, leftAt: Date.now() }).catch(function () {});
+        presenceRef.remove();
+      });
+    }
+
+    /* ── Instant email alert: someone is live on the payment page ── */
+    var alertSent = false;
+    function notifyLive(link, geo) {
+      if (alertSent) return;
+      alertSent = true;
+      if (typeof PAYMENTS_CONFIG === 'undefined') return;
+      var recipients = (PAYMENTS_CONFIG.alertEmail || '')
+        .split(',').map(function (e) { return e.trim(); })
+        .filter(function (e) { return e && !e.startsWith('__'); });
+      if (recipients.length === 0) return;
+      if (typeof sendBrandedEmail !== 'function' || typeof emailjs === 'undefined') return;
+
+      try { emailjs.init(EMAILJS_CONFIG.publicKey); } catch (e) {}
+
+      var loc = [geo.city, geo.region, geo.country_name].filter(Boolean).join(', ') || 'Unknown location';
+      var body =
+        '<p style="font-size:15px;">Someone just opened a payment link 👀</p>' +
+        '<table style="width:100%;font-size:14px;color:#333;margin-top:10px;">' +
+        row('For', link.description || '—') +
+        row('Amount', '$' + (parseFloat(link.amount_total) || 0).toFixed(2)) +
+        row('Client', link.client_name || '—') +
+        row('IP', geo.ip || 'unknown') +
+        row('Location', loc) +
+        row('Device', /Mobi|Android/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop') +
+        row('Time', new Date().toLocaleString()) +
+        '</table>';
+
+      recipients.forEach(function (recipient) {
+        sendBrandedEmail(
+          recipient,
+          '👀 Live: someone is on a payment link',
+          'Payment Link Opened',
+          body,
+          'You will get another notification when they complete payment.'
+        ).catch(function () {});
+      });
+    }
+
+    function row(label, val) {
+      return '<tr><td style="padding:4px 8px;color:#999;">' + label + '</td>' +
+             '<td style="padding:4px 8px;font-weight:600;">' + escapeHtml(String(val)) + '</td></tr>';
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+  })();
+  </script>
+</body>
+</html>

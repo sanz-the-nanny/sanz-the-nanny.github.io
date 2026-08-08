@@ -27,6 +27,17 @@ const EMAILJS_CONFIG = {
   templateId:  "template_universal"   // 1 universal template — full HTML built in JS (free-tier = 2 max)
 };
 
+/* ── Payment API (Stripe link generator) ──
+   apiBase: public URL of the ajayadesign FastAPI backend.
+   adminToken: shared secret required by the /payments/create-link endpoint.
+   Both are injected at build time from GitHub secrets (env.js for local dev). */
+const PAYMENTS_CONFIG = {
+  apiBase:    _e("__PAYMENT_API_BASE__",    "PAYMENT_API_BASE"),
+  adminToken: _e("__PAYMENT_ADMIN_TOKEN__", "PAYMENT_ADMIN_TOKEN"),
+  siteBase:   "https://sanz-the-nanny.github.io",
+  alertEmail: _e("__PAYMENT_ALERT_EMAIL__", "PAYMENT_ALERT_EMAIL")   // who gets the "someone is live" email
+};
+
 const ADMIN_EMAILS = ['sanz.the.nanny@gmail.com'];
 
 /* ── Branded Email Builder ──
