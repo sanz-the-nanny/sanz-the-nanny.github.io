@@ -140,6 +140,27 @@ function copyPayLink() {
   }).catch(function () { document.execCommand('copy'); });
 }
 
+function escPayHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+/* ── Extract the most recent visit's IP + location for the table ── */
+function latestVisitorInfo(visits) {
+  if (!visits) return '<span style="color:var(--text-dim);">—</span>';
+  const arr = Object.values(visits)
+    .filter(function (v) { return v && (v.ip || v.city || v.country); })
+    .sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); });
+  if (arr.length === 0) return '<span style="color:var(--text-dim);">—</span>';
+  const v = arr[0];
+  const ip = v.ip && v.ip !== 'resolving…' ? v.ip : 'unknown';
+  const loc = [v.city, v.region, v.country].filter(Boolean).join(', ') || 'Unknown location';
+  const more = arr.length > 1 ? ' <small style="color:var(--text-dim);">+' + (arr.length - 1) + ' more</small>' : '';
+  return '<span style="font-family:monospace;font-size:0.82rem;">' + escPayHtml(ip) + '</span>' +
+    '<br><small style="color:var(--text-dim);">📍 ' + escPayHtml(loc) + '</small>' + more;
+}
+
 async function refreshPaymentLinks() {
   const container = document.getElementById('payment-links-list');
   if (!container) return;
@@ -165,18 +186,20 @@ async function refreshPaymentLinks() {
     }
 
     let html = '<table class="data-table"><thead><tr>' +
-      '<th>For</th><th>Client Pays</th><th>Status</th><th>Views</th><th></th>' +
+      '<th>For</th><th>Client Pays</th><th>Status</th><th>Visitor (IP / Location)</th><th>Views</th><th></th>' +
       '</tr></thead><tbody>';
     links.forEach(l => {
       const views = l.visits ? Object.keys(l.visits).length : 0;
       const live = l.presence ? Object.keys(l.presence).length : 0;
       const statusBadge = l.status === 'paid' ? 'badge-paid' : 'badge-unpaid';
       const payPageUrl = PAYMENTS_CONFIG.siteBase + '/pay/?id=' + l._key;
+      const visitor = latestVisitorInfo(l.visits);
       html += '<tr>' +
         '<td>' + (l.description || '—') + (l.client_name ? '<br><small style="color:var(--text-dim);">' + l.client_name + '</small>' : '') + '</td>' +
         '<td style="color:var(--pink);font-weight:600;">' + formatCurrency(l.amount_total) + '</td>' +
         '<td><span class="badge ' + statusBadge + '">' + (l.status || 'active') + '</span>' +
           (live > 0 ? ' <span style="color:var(--green-light);">🟢 ' + live + ' live</span>' : '') + '</td>' +
+        '<td>' + visitor + '</td>' +
         '<td>' + views + '</td>' +
         '<td><div class="btn-group">' +
           '<button class="btn btn-outline btn-sm" onclick="copyToClipboard(\'' + payPageUrl + '\')">Copy</button>' +

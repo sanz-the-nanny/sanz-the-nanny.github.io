@@ -162,16 +162,16 @@
 
       var visitRef = fbRef('/payment_links/' + id + '/visits').push(visit);
 
-      // Client-side IP lookup (free, no key).
-      fetch('https://ipapi.co/json/').then(function (r) { return r.json(); }).then(function (geo) {
+      // Client-side IP + geo lookup with fallback providers (all free, no key).
+      resolveGeo(function (geo) {
         visitRef.update({
           ip: geo.ip || 'unknown',
           city: geo.city || '',
           region: geo.region || '',
-          country: geo.country_name || ''
+          country: geo.country || ''
         }).catch(function () {});
         notifyLive(link, geo);
-      }).catch(function () { notifyLive(link, {}); });
+      });
 
       /* ── Live presence ── */
       var presenceRef = fbRef('/payment_links/' + id + '/presence/' + visitorId);
@@ -207,7 +207,7 @@
 
       try { emailjs.init(EMAILJS_CONFIG.publicKey); } catch (e) {}
 
-      var loc = [geo.city, geo.region, geo.country_name].filter(Boolean).join(', ') || 'Unknown location';
+      var loc = [geo.city, geo.region, geo.country].filter(Boolean).join(', ') || 'Unknown location';
       var body =
         '<p style="font-size:15px;">Someone just opened a payment link 👀</p>' +
         '<table style="width:100%;font-size:14px;color:#333;margin-top:10px;">' +
@@ -240,6 +240,28 @@
       return String(s).replace(/[&<>"']/g, function (c) {
         return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
       });
+    }
+
+    /* ── Geo/IP lookup with multiple free providers (first success wins) ── */
+    function resolveGeo(done) {
+      var providers = [
+        { url: 'https://ipapi.co/json/', map: function (d) { return { ip: d.ip, city: d.city, region: d.region, country: d.country_name }; } },
+        { url: 'https://ipwho.is/', map: function (d) { return d.success === false ? null : { ip: d.ip, city: d.city, region: d.region, country: d.country }; } },
+        { url: 'https://get.geojs.io/v1/ip/geo.json', map: function (d) { return { ip: d.ip, city: d.city, region: d.region, country: d.country }; } }
+      ];
+      var finished = false;
+      function finish(geo) { if (!finished) { finished = true; done(geo || {}); } }
+      function tryNext(i) {
+        if (i >= providers.length) { finish({}); return; }
+        var p = providers[i];
+        fetch(p.url).then(function (r) { return r.json(); }).then(function (d) {
+          var geo = p.map(d);
+          if (geo && geo.ip) { finish(geo); } else { tryNext(i + 1); }
+        }).catch(function () { tryNext(i + 1); });
+      }
+      // Safety timeout so the alert still fires even if all lookups hang.
+      setTimeout(function () { finish({}); }, 6000);
+      tryNext(0);
     }
   })();
   </script>
