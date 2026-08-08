@@ -159,11 +159,11 @@
           type: 'clicked_pay', visitorId: visitorId, timestamp: Date.now()
         }).catch(function () {});
       });
-      renderZelleOption(total);
+      renderZelleOption(net);
     }
 
     /* ── Optional Zelle alternative (admin-configured in /settings/zelle) ── */
-    function renderZelleOption(total) {
+    function renderZelleOption(zelleAmount) {
       var el = document.getElementById('zelle-alt');
       if (!el) return;
       fbRef('/settings/zelle').once('value').then(function (snap) {
@@ -175,7 +175,7 @@
             '<div class="zelle-title">or pay by Zelle <span class="zelle-nofee">no card fee</span></div>' +
             '<div class="zelle-row"><span>Send to</span><span class="zelle-handle">' + escapeHtml(z.handle) + '</span></div>' +
             name +
-            '<div class="zelle-row"><span>Amount</span><span>$' + total + '</span></div>' +
+            '<div class="zelle-row"><span>Amount</span><span>$' + zelleAmount + ' <small style="color:var(--muted);font-weight:400;">(no card fee)</small></span></div>' +
             '<p class="zelle-hint">Open your bank app → Zelle → send to the above. Please include your name.</p>' +
           '</div>';
       }).catch(function () {});
