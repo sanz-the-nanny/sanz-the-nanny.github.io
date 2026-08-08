@@ -26,11 +26,25 @@
   h1 { font-size:1.35rem; font-weight:600; margin-bottom:0.25rem; }
   .brand { color:var(--pink); font-size:0.85rem; margin-bottom:1.75rem; }
   .desc { color:var(--muted); font-size:0.95rem; margin-bottom:1.25rem; }
+  .client-line { color:var(--muted); font-size:0.85rem; margin:-0.75rem 0 1rem; }
   .amount {
     font-size:2.6rem; font-weight:700; color:var(--pink);
     margin:0.5rem 0 0.25rem; letter-spacing:-1px;
   }
   .fee-note { color:var(--muted); font-size:0.8rem; margin-bottom:1.75rem; }
+  .breakdown {
+    text-align:left; margin:1.25rem 0 1.75rem; padding:1rem 1.15rem;
+    background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:14px;
+  }
+  .breakdown .brow {
+    display:flex; justify-content:space-between; font-size:0.9rem;
+    color:var(--muted); padding:5px 0;
+  }
+  .breakdown .brow.total {
+    color:var(--text); font-weight:700; font-size:1.05rem;
+    border-top:1px solid var(--border); margin-top:6px; padding-top:11px;
+  }
+  .breakdown .brow.total span:last-child { color:var(--pink); }
   .btn-pay {
     display:inline-block; width:100%; padding:15px; border:none; border-radius:50px;
     background:linear-gradient(135deg,var(--pink),var(--pink-dark)); color:#fff;
@@ -104,14 +118,23 @@
     /* ── Render the payment card ── */
     function renderPay(link) {
       var total = (parseFloat(link.amount_total) || 0).toFixed(2);
+      var net = (parseFloat(link.amount_net) || 0).toFixed(2);
+      var fee = (parseFloat(link.fee) || 0).toFixed(2);
       var feeIncluded = (parseFloat(link.fee) || 0) > 0;
+      var breakdown =
+        '<div class="breakdown">' +
+          '<div class="brow"><span>Amount</span><span>$' + net + '</span></div>' +
+          (feeIncluded ? '<div class="brow"><span>Card processing fee</span><span>$' + fee + '</span></div>' : '') +
+          '<div class="brow total"><span>Total</span><span>$' + total + '</span></div>' +
+        '</div>';
       show(
         '<img class="logo" src="../logo.svg" alt="Sanz the Nanny" onerror="this.style.display=\'none\'">' +
         '<h1>Secure Payment</h1>' +
         '<p class="brand">Sanz the Nanny</p>' +
         '<p class="desc">' + escapeHtml(link.description || 'Payment') + '</p>' +
+        (link.client_name ? '<p class="client-line">for ' + escapeHtml(link.client_name) + '</p>' : '') +
         '<div class="amount">$' + total + '</div>' +
-        (feeIncluded ? '<p class="fee-note">Includes card processing fee</p>' : '<div style="height:1rem;"></div>') +
+        breakdown +
         '<a class="btn-pay" id="btn-pay" href="' + encodeURI(link.stripe_url) + '">Pay by Card →</a>' +
         '<p class="secure">🔒 Payments processed securely by Stripe</p>'
       );
