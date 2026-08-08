@@ -147,18 +147,55 @@ function escPayHtml(s) {
 }
 
 /* ── Extract the most recent visit's IP + location for the table ── */
-function latestVisitorInfo(visits) {
+function latestVisitorInfo(visits, key) {
   if (!visits) return '<span style="color:var(--text-dim);">—</span>';
-  const arr = Object.values(visits)
+  var arr = Object.values(visits)
     .filter(function (v) { return v && (v.ip || v.city || v.country); })
     .sort(function (a, b) { return (b.timestamp || 0) - (a.timestamp || 0); });
   if (arr.length === 0) return '<span style="color:var(--text-dim);">—</span>';
-  const v = arr[0];
-  const ip = v.ip && v.ip !== 'resolving…' ? v.ip : 'unknown';
-  const loc = [v.city, v.region, v.country].filter(Boolean).join(', ') || 'Unknown location';
-  const more = arr.length > 1 ? ' <small style="color:var(--text-dim);">+' + (arr.length - 1) + ' more</small>' : '';
-  return '<span style="font-family:monospace;font-size:0.82rem;">' + escPayHtml(ip) + '</span>' +
-    '<br><small style="color:var(--text-dim);">📍 ' + escPayHtml(loc) + '</small>' + more;
+
+  function realIp(v) { return v.ip && v.ip !== 'unknown' && v.ip !== 'resolving…'; }
+  // Prefer the most recent visit that actually resolved a real IP.
+  var primary = arr.filter(realIp)[0] || arr[0];
+
+  function fmt(v) {
+    var ip = realIp(v) ? v.ip : 'unknown';
+    var loc = [v.city, v.region, v.country].filter(Boolean).join(', ') || 'Unknown location';
+    var when = v.timestamp ? formatDateTime(new Date(v.timestamp).toISOString()) : '';
+    return { ip: ip, loc: loc, when: when };
+  }
+
+  var p = fmt(primary);
+  var head = '<span style="font-family:monospace;font-size:0.82rem;">' + escPayHtml(p.ip) + '</span>' +
+    '<br><small style="color:var(--text-dim);">📍 ' + escPayHtml(p.loc) + '</small>';
+
+  if (arr.length <= 1) return head;
+
+  // Build an expandable list of all visits.
+  var listId = 'visits-' + key;
+  var rows = arr.map(function (v) {
+    var f = fmt(v);
+    return '<div style="padding:4px 0;border-top:1px solid var(--border-dim,rgba(255,255,255,0.06));">' +
+      '<span style="font-family:monospace;font-size:0.78rem;">' + escPayHtml(f.ip) + '</span>' +
+      '<span style="color:var(--text-dim);font-size:0.75rem;"> · 📍 ' + escPayHtml(f.loc) + '</span>' +
+      (f.when ? '<br><span style="color:var(--text-dim);font-size:0.7rem;">' + escPayHtml(f.when) + '</span>' : '') +
+      '</div>';
+  }).join('');
+
+  return head +
+    '<br><a href="#" id="' + listId + '-t" style="font-size:0.72rem;color:var(--pink);" ' +
+      'onclick="togglePayVisits(event,\'' + listId + '\',' + arr.length + ')">Show all ' + arr.length + ' visits ▾</a>' +
+    '<div id="' + listId + '" style="display:none;margin-top:4px;">' + rows + '</div>';
+}
+
+function togglePayVisits(e, id, count) {
+  e.preventDefault();
+  var el = document.getElementById(id);
+  var link = document.getElementById(id + '-t');
+  if (!el) return;
+  var open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : 'block';
+  if (link) link.textContent = open ? ('Show all ' + count + ' visits ▾') : 'Hide visits ▴';
 }
 
 async function refreshPaymentLinks() {
@@ -193,7 +230,7 @@ async function refreshPaymentLinks() {
       const live = l.presence ? Object.keys(l.presence).length : 0;
       const statusBadge = l.status === 'paid' ? 'badge-paid' : 'badge-unpaid';
       const payPageUrl = PAYMENTS_CONFIG.siteBase + '/pay/?id=' + l._key;
-      const visitor = latestVisitorInfo(l.visits);
+      const visitor = latestVisitorInfo(l.visits, l._key);
       html += '<tr>' +
         '<td>' + (l.description || '—') + (l.client_name ? '<br><small style="color:var(--text-dim);">' + l.client_name + '</small>' : '') + '</td>' +
         '<td style="color:var(--pink);font-weight:600;">' + formatCurrency(l.amount_total) + '</td>' +
