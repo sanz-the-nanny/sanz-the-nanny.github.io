@@ -244,13 +244,21 @@
       });
     }
 
-    /* ── Geo/IP lookup with multiple free providers (first success wins) ── */
+    /* ── Geo/IP lookup: our backend first (reliable, not ad-block/VPN-blockable),
+         then fall back to public providers. First success wins. ── */
     function resolveGeo(done) {
-      var providers = [
+      var providers = [];
+      if (typeof PAYMENTS_CONFIG !== 'undefined' && PAYMENTS_CONFIG.apiBase && !PAYMENTS_CONFIG.apiBase.startsWith('__')) {
+        providers.push({
+          url: PAYMENTS_CONFIG.apiBase.replace(/\/$/, '') + '/api/v1/payments/whoami',
+          map: function (d) { return { ip: d.ip, city: d.city, region: d.region, country: d.country }; }
+        });
+      }
+      providers.push(
         { url: 'https://ipapi.co/json/', map: function (d) { return { ip: d.ip, city: d.city, region: d.region, country: d.country_name }; } },
         { url: 'https://ipwho.is/', map: function (d) { return d.success === false ? null : { ip: d.ip, city: d.city, region: d.region, country: d.country }; } },
         { url: 'https://get.geojs.io/v1/ip/geo.json', map: function (d) { return { ip: d.ip, city: d.city, region: d.region, country: d.country }; } }
-      ];
+      );
       var finished = false;
       function finish(geo) { if (!finished) { finished = true; done(geo || {}); } }
       function tryNext(i) {
@@ -258,7 +266,7 @@
         var p = providers[i];
         fetch(p.url).then(function (r) { return r.json(); }).then(function (d) {
           var geo = p.map(d);
-          if (geo && geo.ip) { finish(geo); } else { tryNext(i + 1); }
+          if (geo && geo.ip && geo.ip !== 'unknown') { finish(geo); } else { tryNext(i + 1); }
         }).catch(function () { tryNext(i + 1); });
       }
       // Safety timeout so the alert still fires even if all lookups hang.
