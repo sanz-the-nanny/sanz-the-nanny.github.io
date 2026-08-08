@@ -109,6 +109,13 @@
           "$visitor": {
             ".write": true
           }
+        },
+        // Payment-completed events appended by the Stripe webhook (append-only).
+        "payments": {
+          "$payment": {
+            ".write": "!data.exists()",
+            ".validate": "newData.exists()"
+          }
         }
       }
     },

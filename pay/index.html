@@ -54,6 +54,7 @@
   }
   .btn-pay:hover { transform:translateY(-2px); box-shadow:0 10px 32px rgba(255,107,157,0.45); }
   .secure { color:var(--muted); font-size:0.75rem; margin-top:1.25rem; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .monitor-note { color:var(--text-dim,#706070); font-size:0.62rem; line-height:1.3; margin-top:0.6rem; opacity:0.7; }
   .state { color:var(--muted); font-size:0.95rem; }
   .err { color:#ef5350; }
   .spinner {
@@ -136,7 +137,8 @@
         '<div class="amount">$' + total + '</div>' +
         breakdown +
         '<a class="btn-pay" id="btn-pay" href="' + encodeURI(link.stripe_url) + '">Pay by Card →</a>' +
-        '<p class="secure">🔒 Payments processed securely by Stripe</p>'
+        '<p class="secure">🔒 Payments processed securely by Stripe</p>' +
+        '<p class="monitor-note">This page is monitored and activity (including approximate location) may be recorded for security.</p>'
       );
       var btn = document.getElementById('btn-pay');
       if (btn) btn.addEventListener('click', function () {

@@ -52,6 +52,11 @@ async function createPaymentLink() {
   btn.textContent = 'Generating…';
 
   try {
+    // Reserve the tracked-link Firebase key up front so we can embed it in
+    // the Stripe link metadata (lets the webhook mark THIS link paid).
+    const newRef = fbRef('/payment_links').push();
+    const trackId = newRef.key;
+
     const resp = await fetch(PAYMENTS_CONFIG.apiBase.replace(/\/$/, '') + '/api/v1/payments/create-link', {
       method: 'POST',
       headers: {
@@ -63,7 +68,8 @@ async function createPaymentLink() {
         description: description,
         client_name: clientName || null,
         client_phone: clientPhone || null,
-        add_fee: addFee
+        add_fee: addFee,
+        track_id: trackId
       })
     });
 
@@ -84,8 +90,7 @@ async function createPaymentLink() {
       created_at: new Date().toISOString(),
       created_by: (currentUser && currentUser.email) || 'admin'
     };
-    const ref = await fbPush('/payment_links/', record);
-    const trackId = ref.key;
+    await newRef.set(record);
     const payPageUrl = PAYMENTS_CONFIG.siteBase + '/pay/?id=' + trackId;
 
     if (typeof logActivity === 'function') {
@@ -228,14 +233,17 @@ async function refreshPaymentLinks() {
     links.forEach(l => {
       const views = l.visits ? Object.keys(l.visits).length : 0;
       const live = l.presence ? Object.keys(l.presence).length : 0;
-      const statusBadge = l.status === 'paid' ? 'badge-paid' : 'badge-unpaid';
+      const isPaid = l.status === 'paid' || (l.payments && Object.keys(l.payments).length > 0);
+      const statusLabel = isPaid ? 'paid' : (l.status || 'active');
+      const statusBadge = isPaid ? 'badge-paid' : 'badge-unpaid';
       const payPageUrl = PAYMENTS_CONFIG.siteBase + '/pay/?id=' + l._key;
       const visitor = latestVisitorInfo(l.visits, l._key);
       html += '<tr>' +
         '<td>' + (l.description || '—') + (l.client_name ? '<br><small style="color:var(--text-dim);">' + l.client_name + '</small>' : '') + '</td>' +
         '<td style="color:var(--pink);font-weight:600;">' + formatCurrency(l.amount_total) + '</td>' +
-        '<td><span class="badge ' + statusBadge + '">' + (l.status || 'active') + '</span>' +
-          (live > 0 ? ' <span style="color:var(--green-light);">🟢 ' + live + ' live</span>' : '') + '</td>' +
+        '<td><span class="badge ' + statusBadge + '">' + statusLabel + '</span>' +
+          (isPaid ? ' <span style="color:var(--green-light);">✅</span>' :
+            (live > 0 ? ' <span style="color:var(--green-light);">🟢 ' + live + ' live</span>' : '')) + '</td>' +
         '<td>' + visitor + '</td>' +
         '<td>' + views + '</td>' +
         '<td><div class="btn-group">' +
