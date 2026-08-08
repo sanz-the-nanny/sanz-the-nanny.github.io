@@ -14,6 +14,36 @@ function grossUpCardAmount(net) {
   return Math.ceil(gross * 100) / 100;
 }
 
+/* ── Zelle settings (stored in /settings/zelle, public-readable) ── */
+async function loadZelleSettings() {
+  if (!firebaseReady) return;
+  try {
+    const snap = await fbOnce('/settings/zelle');
+    const z = snap.val() || {};
+    const h = document.getElementById('zelle-handle');
+    const n = document.getElementById('zelle-name');
+    if (h) h.value = z.handle || '';
+    if (n) n.value = z.name || '';
+  } catch (e) { /* noop */ }
+}
+
+async function saveZelleSettings() {
+  const status = document.getElementById('zelle-save-status');
+  const handle = (document.getElementById('zelle-handle').value || '').trim();
+  const name = (document.getElementById('zelle-name').value || '').trim();
+  if (!firebaseReady) { if (status) status.textContent = 'Firebase not connected'; return; }
+  try {
+    await fbSet('/settings/zelle', { handle: handle, name: name, updated_at: new Date().toISOString() });
+    if (status) {
+      status.textContent = handle ? '✓ Saved' : '✓ Cleared (hidden on pay page)';
+      setTimeout(function () { status.textContent = ''; }, 3000);
+    }
+    if (typeof logActivity === 'function') logActivity('payment_settings', 'Updated Zelle payment info');
+  } catch (err) {
+    if (status) status.textContent = 'Error: ' + (err.message || err);
+  }
+}
+
 function updatePayPreview() {
   const net = parseFloat(document.getElementById('pay-amount').value) || 0;
   const addFee = document.getElementById('pay-add-fee').checked;
@@ -204,6 +234,7 @@ function togglePayVisits(e, id, count) {
 }
 
 async function refreshPaymentLinks() {
+  loadZelleSettings();
   const container = document.getElementById('payment-links-list');
   if (!container) return;
   container.className = 'loading';
