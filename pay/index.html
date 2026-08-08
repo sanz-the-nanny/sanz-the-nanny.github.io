@@ -185,21 +185,18 @@
     function trackVisit(link) {
       var ua = navigator.userAgent;
       var device = /Mobi|Android/i.test(ua) ? 'mobile' : /Tablet|iPad/i.test(ua) ? 'tablet' : 'desktop';
-      var visit = {
-        type: 'arrived',
-        visitorId: visitorId,
-        timestamp: arrivedAt,
-        device: device,
-        referrer: document.referrer || 'Direct',
-        userAgent: ua,
-        ip: 'resolving…'
-      };
+      var visitsRef = fbRef('/payment_links/' + id + '/visits');
 
-      var visitRef = fbRef('/payment_links/' + id + '/visits').push(visit);
-
-      // Client-side IP + geo lookup with fallback providers (all free, no key).
+      // Resolve IP/geo FIRST, then push the complete visit as one write.
+      // (The visits node is append-only, so a follow-up .update() would be rejected.)
       resolveGeo(function (geo) {
-        visitRef.update({
+        visitsRef.push({
+          type: 'arrived',
+          visitorId: visitorId,
+          timestamp: arrivedAt,
+          device: device,
+          referrer: document.referrer || 'Direct',
+          userAgent: ua,
           ip: geo.ip || 'unknown',
           city: geo.city || '',
           region: geo.region || '',
@@ -223,7 +220,8 @@
       window.addEventListener('beforeunload', function () {
         clearInterval(heartbeat);
         var dur = Math.round((Date.now() - arrivedAt) / 1000);
-        visitRef.update({ duration: dur, leftAt: Date.now() }).catch(function () {});
+        // Append-only: push a separate 'left' event rather than updating.
+        visitsRef.push({ type: 'left', visitorId: visitorId, timestamp: Date.now(), duration: dur }).catch(function () {});
         presenceRef.remove();
       });
     }
